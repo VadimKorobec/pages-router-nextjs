@@ -1,47 +1,73 @@
+import { MongoClient, ObjectId } from "mongodb";
+import Head from "next/head";
 import MeetupDetail from "@/components/meetups/MeetupDetail";
 
-const MeetupDetails = () => {
+const MeetupDetails = (props) => {
+  
   return (
-    <MeetupDetail
-      image="https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/New_York_Midtown_Skyline_at_night_-_Jan_2006_edit1.jpg/1280px-New_York_Midtown_Skyline_at_night_-_Jan_2006_edit1.jpg?uselang=ru"
-      title="The First Meetup"
-      address="some address"
-      description="some description"
-    />
+    <>
+      <Head>
+        <title>{ props.meetupData.title}</title>
+        <meta
+          name="description"
+          content={props.meetupData.description}
+        />
+      </Head>
+      <MeetupDetail
+        image={props.meetupData.image}
+        title={props.meetupData.title}
+        address={props.meetupData.address}
+        description={props.meetupData.description}
+      />
+    </>
   );
 };
 
 export const getStaticPaths = async () => {
+  const client = await MongoClient.connect(
+    "mongodb+srv://Vadim:aKFxcp9rOyRJJMF9@cluster0.38dqe.mongodb.net/meetups?retryWrites=true&w=majority&appName=Cluster0"
+  );
+
+  const db = client.db("meetups");
+  const meetupsCollection = db.collection("meetups");
+
+  const meetups = await meetupsCollection.find({}, { _id: 1 }).toArray();
+
+  client.close();
+
   return {
-    paths: [
-      {
-        params: {
-          meetupId: "m1",
-        },
-      },
-      {
-        params: {
-          meetupId: "m2",
-        },
-      },
-    ],
-    fallback:false,
+    paths: meetups.map((meetup) => ({
+      params: { meetupId: meetup._id.toString() },
+    })),
+    fallback: false,
   };
 };
 
 export const getStaticProps = async (context) => {
   const meetupId = context.params.meetupId;
 
-  console.log(meetupId);
+  const client = await MongoClient.connect(
+    "mongodb+srv://Vadim:aKFxcp9rOyRJJMF9@cluster0.38dqe.mongodb.net/meetups?retryWrites=true&w=majority&appName=Cluster0"
+  );
+
+  const db = client.db("meetups");
+
+  const meetupsCollection = db.collection("meetups");
+
+  const selectedMeetup = await meetupsCollection.findOne({
+    _id: new ObjectId(meetupId),
+  });
+
+  client.close();
+
   return {
     props: {
       meetupData: {
-        image:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/New_York_Midtown_Skyline_at_night_-_Jan_2006_edit1.jpg/1280px-New_York_Midtown_Skyline_at_night_-_Jan_2006_edit1.jpg?uselang=ru",
-        id: meetupId,
-        title: "The First Meetup",
-        address: "Some address",
-        description: "Some description",
+        id: selectedMeetup._id.toString(),
+        title: selectedMeetup.title,
+        address: selectedMeetup.address,
+        description: selectedMeetup.description,
+        image: selectedMeetup.image,
       },
     },
   };
